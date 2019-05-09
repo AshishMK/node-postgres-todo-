@@ -1,0 +1,263 @@
+var express = require('express');
+var router = express.Router();
+const pg = require('pg');
+const path = require('path');
+const connectionString = process.env.DATABASE_URL || 'postgres://actor:actor@localhost:5432/actor'
+var plivo = require('plivo');
+let client = new plivo.Client('MAODQ1NTI5NDY4NTY4ZJ', 'YTAxZGUxNzI5NzJkZmVmMjg0MjVhOTdjYTlkMjY2');
+var UPLOAD_PATH = "./uploads/";
+var multer = require('multer');
+var fileUploadCompleted = false;
+/* GET home page. */
+router.get('/', function(req, res, next) {
+  res.render('index', { title: 'Express' });
+});
+var app = express();
+module.exports = router;
+
+router.get('/num/:todo_id',function (req, res, next)  {
+const data = req.params.todo_id;
+//const name=req.body.name;
+var num = Math.floor(Math.random() * 90000) + 10000;
+
+var params = {
+    'src': '1111111111', // Sender's phone number with country code
+    'dst' : data, // Receiver's phone Number with country code
+    'text' : "verify code is: "+num, // Your SMS Text Message - English
+    //'text' : "こんにちは、元気ですか？", // Your SMS Text Message - Japanese
+    //'text' : "Ce est texte généré aléatoirement", // Your SMS Text Message - French
+    'url' : "http://example.com/report/", // The URL to which with the status of the message is sent
+    'method' : "GET" // The method used to call the url
+};
+
+client.messages.create(
+  '1111111111',
+  data,
+  num
+).then(function(message_created) {
+  console.log(message_created)
+    return res.status(200).json({success: true, data: num});
+
+
+});
+});
+
+
+router.get('/get_users', function(req, res, next) {
+  const results = [];
+
+  pg.connect(connectionString, function(err, client, done)  {
+    // Handle connection errors
+    if(err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+    // SQL Query > Select Data
+//    const query = client.query("select count(*) as c1 from users union SELECT count (*)as c2 FROM history_messages union select count(*) as c3 from files where name like '%.jpg' or name like '%.jpeg'  or name like '%.png' union select count(*) as c3 from files where name like '%.jpg' or name like '%.png' or name like '%.jpeg' or name like '%.gif' or name like '%.jps' or name like '%.jp2' or name like '%.tiff' or name like '%.psd' or name like '%.webp’ or name like '%.ico' or name like '%.pcx' or name like '%.tga' or name like '%.raw' union select count(*) as c4 from files where name like '%.mp4' or name like '%.mpeg-4' or name like '%.flv' or name like '%.m4v' or name like '%.webm' or name like '%.avi' or name like '%.3gp' or name like '%.avi' union select count(*) as c5 from files where name like '%.mp3' or name like '%.opus' or name like '%.m4a'  or name like '%.aac' or name like '%.flac' or name like '%.alac' or name like '%.m3u' or name like '%.wma' or name like '%.ogg' or name like '%.3gpp' or name like '%.amr' or name like '%.wav';");
+ 
+const query = client.query("select 1, count(*) as c1 from users union all SELECT 2,count (*)as c2 FROM history_messages union all select 3,count(*) as c3 from files where name like '%.jpg' or name like '%.png' or name like '%.jpeg' or name like '%.gif' or name like '%.jps' or name like '%.jp2' or name like '%.tiff' or name like '%.psd' or name like '%.webp' or name like '%.ico' or name like '%.pcx' or name like '%.tga' or name like '%.raw' union all select 4,count(*) as c4 from files where name like '%.mp4' or name like '%.mpeg-4' or name like '%.flv' or name like '%.m4v' or name like '%.webm' or name like '%.avi' or name like '%.3gp' or name like '%.avi' union all select 5,count(*) as c5 from files where name like '%.mp3' or name like '%.opus' or name like '%.m4a'  or name like '%.aac' or name like '%.flac' or name like '%.alac' or name like '%.m3u' or name like '%.wma' or name like '%.ogg' or name like '%.3gpp' or name like '%.amr' or name like '%.wav' union all select 6,count(*) as c6 from history_messages where message_content_header ='2' union all select 7,count(*) as c7 from files ORDER BY 1;");
+// Stream results back one row at a time
+    query.on('row', function(row) {
+      results.push(row);
+    });
+  // After all data is returned, close connection and return results
+    query.on('end',function () {
+      done();
+      return res.json(results);
+    });
+
+});
+});
+
+router.get('/get_last_users', function(req, res, next) {
+  const results = [];
+
+  pg.connect(connectionString, function(err, client, done)  {
+    // Handle connection errors
+    if(err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+    // SQL Query > Select Data
+//    const query = client.query("select count(*) as c1 from users union SELECT count (*)as c2 FROM history_messages union select count(*) as c3 from files where name $
+
+const query = client.query("select * from (select * from user_phones ) d join (select * from users where is_bot=false order by created_at desc limit 100) m on m.id=d.user_id order by created_at desc;");
+// Stream results back one row at a time
+    query.on('row', function(row) {
+      results.push(row);
+    });
+  // After all data is returned, close connection and return results
+    query.on('end',function () {
+      done();
+      return res.json(results);
+    });
+
+});
+});
+
+
+
+router.get('/get_user_code/:phone', function(req, res, next) {
+  const results = [];
+var ph=req.params.phone;
+  pg.connect(connectionString, function(err, client, done)  {
+    // Handle connection errors
+    if(err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+    // SQL Query > Select Data
+//    const query = client.query("select count(*) as c1 from users union SELECT count (*)as c2 FROM history_messages union select count(*) as c3 from files where name $
+
+const query = client.query("select xmin, transaction_hash  from auth_phone_transactions where phone_number='"+ph+"' and  is_checked=false", function(err, result) {
+  if(err){
+      return console.error('error running query', err);
+     }
+var theShit=0;
+var t_id="";
+var rm=0;
+    if(result.rows.length > 0) {
+   for (var i = 0; i < result.rows.length; i++) {
+var tmp=parseInt(result.rows[i].xmin);
+console.log(result.rows[i].xmin+" "+theShit);
+        if( tmp > theShit){
+rm=i;
+//console.log(i+"\n");
+
+theShit=tmp;
+}
+      
+}
+t_id=result.rows[rm].transaction_hash;
+console.log(t_id);
+const query = client.query("select * from auth_codes where transaction_hash ='"+t_id+"'");
+// Stream results back one row at a time
+    query.on('row', function(row) {
+      results.push(row);
+    });
+  // After all data is returned, close connection and return results
+    query.on('end',function () {
+      done();
+      return res.json(results);
+    });
+
+}
+else{
+ done();
+     
+      return res.status(500).json({success: false, data: "false"});
+
+}
+
+});
+
+
+});
+});
+
+router.get('/get_users_time/:todo_id', function(req, res, next) {
+  const results = [];
+
+  pg.connect(connectionString, function(err, client, done)  {
+    // Handle connection errors
+    if(err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+    // SQL Query > Select Data
+//    const query = client.query("select count(*) as c1 from users union SELECT count (*)as c2 FROM history_messages union select count(*) as c3 from files where name $
+const t=req.params.todo_id*24;
+const tim=""+t+" hours";
+console.log("count: "+ tim);
+var cc=0;
+
+const cv=client.query("SELECT count(*) FROM history_messages WHERE message_content_header ='3'  and date > now()- interval '"+tim+"'", function(err, result) {
+
+    if(err){
+      return console.error('error running query', err);
+     }
+    if(result.rows.length > 0) {
+       // res.render('index.njk', { recordResult: result.rows});
+
+cc=result.rows[0].count;      
+// console.log("cc "+cc);
+  //   }else {
+    //    console.log('No rows found in DB');
+      //}
+   // done() 
+    //});
+// 
+ console.log("ccm "+cc);
+
+
+const query = client.query("select 1, count(*) as c1 from users WHERE created_at > now()- interval '"+tim+"' union all SELECT 2,count(*) as c2 FROM history_messages WHERE date > now()- interval '"+tim+"'   union all select 3,count(*) as c3 from (select * from files order by id desc limit "+cc+") as tbl where name like '%.jpg' or name like '%.png' or name like '%.jpeg' or name like '%.gif' or name like '%.jps' or name like '%.jp2' or name like '%.tiff' or name like '%.psd' or name like '%.webp' or name like '%.ico' or name like '%.pcx' or name like '%.tga' or name like '%.raw'  union all select 4,count(*) as c4 from  (select * from files order by id desc limit "+cc+") as tbl  where name like '%.mp4' or name like '%.mpeg-4' or name like '%.flv' or name like '%.m4v' or name like '%.webm' or name like '%.avi' or name like '%.3gp'  or name like '%.avi' union all select 5,count(*) as c5 from  (select * from files order by id desc limit "+cc+") as tbl  where name like '%.mp3' or name like '%.opus' or name like '%.m4a'  or name like '%.aac' or name like '%.flac' or name like '%.alac' or name like '%.m3u' or name like '%.wma' or name like '%.ogg' or name like '%.3gpp' or name like '%.amr' or name like '%.wav' union all select 6,count(*) as c6 from history_messages where message_content_header ='2' and date > now()- interval '"+tim+"' union all select 7, count(*) FROM history_messages WHERE message_content_header ='3'  and date > now()- interval '"+tim+"' ORDER BY 1;");
+//con console.log("cc "+cc);
+//const t=req.params.todo_id*24;
+//const tim=""+t+" hours";//
+console.log("count: "+ tim);
+//	const query=client.query("SELECT count(*) FROM history_messages WHERE date > now()- interval '"+tim+"'");
+// Stream results bay=ck one row at a time
+    query.on('row', function(row) {
+      results.push(row);
+    });
+  // After all data is returned, close connection and return results
+    query.on('end',function () {
+      done();
+      return res.json(results);
+    });
+}
+else{
+  done();
+      return res.json(results);
+
+}
+});
+});
+});
+
+var multerFiles = multer({
+    dest: UPLOAD_PATH,
+    rename: function (fieldname, filename) {
+        return filename;
+    },
+    onParseEnd: function(req, next) {
+        printRequestParameters(req);
+        next();
+    },
+    onFileUploadStart: function (file) {
+        console.log("Started file upload\n parameter name: " +
+                    file.fieldname + "\n file name: " +
+                    file.originalname + "\n mime type: " + file.mimetype);
+    },
+    onFileUploadComplete: function (file) {
+        var fullPath = path.resolve(UPLOAD_PATH, file.originalname);
+        console.log("Completed file upload\n parameter name: " +
+                    file.fieldname + "\n file name: " +
+                    file.originalname + "\n mime type: " + file.mimetype +
+                    "\n in: " + fullPath);
+        fileUploadCompleted = true;
+    }
+});
+
+var multipartUploadHandler = function(req, res) {
+    if (fileUploadCompleted) {
+        fileUploadCompleted = false;
+        res.header('transfer-encoding', ''); // disable chunked transfer encoding
+        res.end("Upload Ok!");
+    }
+};
+// handle multipart uploads 
+app.get('/upload/multipart', function(req, res)
+{
+console.log("************************");
+multipartReqInterceptor, multerFiles, multipartUploadHandler
+}); 
+var multipartReqInterceptor = function(req, res, next) {
+    console.log("\n\nHTTP/Multipart Upload Request from: " + req.ip);
+    printRequestHeaders(req);
+    next();
+};
